@@ -1,12 +1,13 @@
 from flask import Flask, request, jsonify
 from openai import OpenAI
+import groq
 import json
 
 app = Flask(__name__)
 
 # Initialiseer de OpenAI client. 
 # PLAK HIER JOUW API SLEUTEL (Tussen de aanhalingstekens)
-client = OpenAI(api_key="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")
+client = groq.Groq(api_key="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")
 
 @app.route('/api/calculate', methods=['POST'])
 def calculate():
