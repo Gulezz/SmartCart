@@ -32,12 +32,7 @@ class MenuScherm extends StatefulWidget {
 class _MenuSchermState extends State<MenuScherm> {
   // Controller om de tekst uit het invoerveld te lezen
   final TextEditingController _menuController = TextEditingController();
-  bool _isLoading = false; // Houdt bij of we aan het laden zijn
-  
-  Future<void> _calculateList() async {
-    if (_menuController.text.isEmpty) return;
-
-  bool _isLaden = false;
+  bool _isLaden = false; // Houdt bij of we aan het laden zijn
   Map<String, dynamic>? _apiResultaat;
 
   // De HTTP-functie die we eerder hebben opgezet
@@ -47,7 +42,7 @@ class _MenuSchermState extends State<MenuScherm> {
     });
 
     // Het adres van de Python Flask server via de Android Emulator
-    final url = Uri.parse('http://10.0.2.2:5000/api/calculate');
+    final url = Uri.parse('http://192.168.2.55:5000/api/calculate');
 
     try {
       final response = await http.post(

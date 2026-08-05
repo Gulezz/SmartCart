@@ -6,7 +6,7 @@ app = Flask(__name__)
 
 # Initialiseer de OpenAI client. 
 # PLAK HIER JOUW API SLEUTEL (Tussen de aanhalingstekens)
-client = OpenAI(api_key="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")
+client = OpenAI(api_key="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")
 
 @app.route('/api/calculate', methods=['POST'])
 def calculate():
@@ -34,7 +34,7 @@ def calculate():
     try:
         # 2. We sturen de data naar OpenAI (we gebruiken het snelle en goedkope gpt-4o-mini model)
         response = client.chat.completions.create(
-            model="gpt-4o-mini",
+            model="llama-3.1-8b-instant",
             response_format={ "type": "json_object" }, # Dit dwingt OpenAI om geldige JSON terug te geven
             messages=[
                 {"role": "system", "content": system_prompt},
