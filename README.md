@@ -67,4 +67,3 @@ confidence status.
 - [`docs/PRICE_DATA_INTEGRATION.md`](docs/PRICE_DATA_INTEGRATION.md) — retailer API/feed architecture
 - [`docs/MAPS_AND_ROUTING.md`](docs/MAPS_AND_ROUTING.md) — map and route architecture
 - [`dit is een test`]
-
