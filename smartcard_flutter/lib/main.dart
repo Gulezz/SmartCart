@@ -12,211 +12,188 @@ class SmartGroceryApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Slim Boodschappen',
+      title: 'Smart Grocery',
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.teal),
+        primarySwatch: Colors.green,
         useMaterial3: true,
       ),
-      home: const MenuInputScreen(),
+      home: const MenuScherm(),
     );
   }
 }
 
-// SCHERM 1: Het invoeren van het weekmenu
-class MenuInputScreen extends StatefulWidget {
-  const MenuInputScreen({super.key});
+class MenuScherm extends StatefulWidget {
+  const MenuScherm({super.key});
 
   @override
-  State<MenuInputScreen> createState() => _MenuInputScreenState();
+  State<MenuScherm> createState() => _MenuSchermState();
 }
 
-class _MenuInputScreenState extends State<MenuInputScreen> {
+class _MenuSchermState extends State<MenuScherm> {
+  // Controller om de tekst uit het invoerveld te lezen
   final TextEditingController _menuController = TextEditingController();
   bool _isLoading = false; // Houdt bij of we aan het laden zijn
   
   Future<void> _calculateList() async {
     if (_menuController.text.isEmpty) return;
 
+  bool _isLaden = false;
+  Map<String, dynamic>? _apiResultaat;
+
+  // De HTTP-functie die we eerder hebben opgezet
+  Future<void> fetchBerekening(String ingevoerdMenu) async {
     setState(() {
-      _isLoading = true; // Start de laad-animatie
+      _isLaden = true;
     });
 
+    // Het adres van de Python Flask server via de Android Emulator
+    final url = Uri.parse('http://10.0.2.2:5000/api/calculate');
+
     try {
-      // BELANGRIJK: 10.0.2.2 is het IP-adres waarmee een Android-emulator
-      // contact kan maken met de 'localhost' (je eigen computer) waar de server straks draait.
-      final url = Uri.parse('http://10.0.2.2:5000/api/calculate');
-      
       final response = await http.post(
         url,
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'menu': _menuController.text}),
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({
+          'menu': ingevoerdMenu,
+        }),
       );
 
       if (response.statusCode == 200) {
-        // Succes! Converteer de JSON-tekst naar een werkbaar Dart-object
-        final responseData = jsonDecode(response.body);
-        
-        // Navigeer naar het volgende scherm en geef de data mee
-        if (mounted) {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => ResultScreen(resultData: responseData),
-            ),
-          );
-        }
-      } else {
-        _showError('Server gaf een foutcode: ${response.statusCode}');
-      }
-    } catch (e) {
-      // Als de server nog niet bestaat of niet bereikbaar is, laten we een test-resultaat zien
-      // zodat je de app toch kunt blijven testen tijdens het bouwen!
-      print('Netwerkfout (Draait de server al?): $e');
-      _showMockResult();
-    } finally {
-      if (mounted) {
         setState(() {
-          _isLoading = false; // Stop de laad-animatie
+          _apiResultaat = jsonDecode(response.body);
+          _isLaden = false;
+        });
+      } else {
+        print('Fout: Server gaf code ${response.statusCode}');
+        setState(() {
+          _isLaden = false;
         });
       }
+    } catch (e) {
+      print('Fout bij het verbinden met de server: $e');
+      setState(() {
+        _isLaden = false;
+      });
     }
   }
 
-  void _showMockResult() {
-    final mockData = {
-      "route_info": "Colruyt (3.2 km) -> Aldi (1.5 km)",
-      "travel_cost": "€0.70",
-      "total_price": "€ 9.53",
-      "items": [
-        {"name": "Aardappelen (2kg) (Fictief)", "store": "Aldi", "price": "€ 2.49"},
-        {"name": "Gehakt (500g) (Fictief)", "store": "Colruyt", "price": "€ 4.15"},
-      ]
-    };
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => ResultScreen(resultData: mockData),
-      ),
-    );
-  }
-
-  void _showError(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message), backgroundColor: Colors.red),
-    );
+  @override
+  void dispose() {
+    _menuController.dispose();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Mijn Weekmenu'),
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+        title: const Text('Slimme Boodschappenlijst'),
+        backgroundColor: Colors.green,
+        foregroundColor: Colors.white,
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const Text(
-              'Wat wil je eten deze week?',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            // Het invoerveld voor het menu
+            TextField(
+              controller: _menuController,
+              maxLines: 3,
+              decoration: const InputDecoration(
+                hintText: 'Typ hier je weekmenu (bijv. Spaghetti Bolognese voor 4 personen)',
+                border: OutlineInputBorder(),
+              ),
             ),
             const SizedBox(height: 16),
-            Expanded(
-              child: TextField(
-                controller: _menuController,
-                maxLines: null,
-                expands: true,
-                textAlignVertical: TextAlignVertical.top,
-                decoration: InputDecoration(
-                  hintText: 'Bijv: Dinsdag lasagne, woensdag stoofvlees...',
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
+            
+            // De knop om de actie te starten
+            SizedBox(
+              width: double.infinity,
+              height: 50,
+              child: ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.green,
+                  foregroundColor: Colors.white,
                 ),
+                onPressed: _isLaden
+                    ? null
+                    : () {
+                        if (_menuController.text.isNotEmpty) {
+                          FocusScope.of(context).unfocus(); // Sluit het toetsenbord na het klikken
+                          fetchBerekening(_menuController.text);
+                        }
+                      },
+                child: _isLaden
+                    ? const CircularProgressIndicator(color: Colors.white)
+                    : const Text('Bereken Boodschappenlijst', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
               ),
             ),
-            const SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: _isLoading ? null : _calculateList, // Deactiveer knop tijdens laden
-              style: ElevatedButton.styleFrom(
-                padding: const EdgeInsets.all(16),
-              ),
-              child: _isLoading 
-                  ? const CircularProgressIndicator() // Toon laad-wiel
-                  : const Text('Bereken Boodschappen & Route', style: TextStyle(fontSize: 18)),
+            const SizedBox(height: 24),
+            
+            // Resultaten of welkomsttekst weergeven
+            Expanded(
+              child: _apiResultaat == null
+                  ? const Center(child: Text('Voer een menu in om de AI te starten.', style: TextStyle(fontSize: 16)))
+                  : _bouwResultatenLijst(),
             ),
           ],
         ),
       ),
     );
   }
-}
 
-// SCHERM 2: De resultaten (Boodschappenlijst & Route)
-class ResultScreen extends StatelessWidget {
-  final Map<String, dynamic> resultData; // Ontvangt dynamische data in plaats van vaste tekst
-
-  const ResultScreen({super.key, required this.resultData});
-
-  @override
-  Widget build(BuildContext context) {
-    // Haal de lijst met producten uit de data
-    final List<dynamic> items = resultData['items'] ?? [];
-
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Jouw Route & Lijst'),
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Card(
-              child: ListTile(
-                leading: const Icon(Icons.map, color: Colors.blue),
-                title: const Text('Optimale Route'),
-                subtitle: Text(resultData['route_info'] ?? 'Geen route info'),
-                trailing: Text('${resultData['travel_cost']} reiskost'),
-              ),
+  // Aparte widget-functie om de UI netjes te houden
+  Widget _bouwResultatenLijst() {
+    // We halen veilig de lijsten uit de JSON, met fallbacks als er iets mist
+    final items = _apiResultaat!['items'] as List<dynamic>? ?? [];
+    final routeInfo = _apiResultaat!['route_info'] ?? 'Vertrek Bierbeek -> Route wordt later berekend';
+    
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Algemeen overzicht (Route & Prijs)
+        Card(
+          color: Colors.green.shade50,
+          child: Padding(
+            padding: const EdgeInsets.all(12.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('Overzicht', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+                const SizedBox(height: 8),
+                Text('Route: $routeInfo', style: const TextStyle(fontSize: 15)),
+                const SizedBox(height: 4),
+                Text('Totale geschatte prijs: ${_apiResultaat!['total_price']}', style: const TextStyle(fontSize: 15)),
+              ],
             ),
-            const SizedBox(height: 16),
-            const Text(
-              'Boodschappenlijst',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 8),
-            // ListView.builder is geoptimaliseerd voor het bouwen van (lange) dynamische lijsten
-            Expanded(
-              child: ListView.builder(
-                itemCount: items.length,
-                itemBuilder: (context, index) {
-                  final item = items[index];
-                  return Card(
-                    margin: const EdgeInsets.symmetric(vertical: 4),
-                    child: ListTile(
-                      title: Text(item['name'] ?? 'Onbekend'),
-                      subtitle: Text(item['store'] ?? 'Onbekend'),
-                      trailing: Text(item['price'] ?? '€0.00'),
-                    ),
-                  );
-                },
-              ),
-            ),
-            const Divider(),
-            ListTile(
-              title: const Text('Totale geschatte kostprijs:', style: TextStyle(fontWeight: FontWeight.bold)),
-              trailing: Text(
-                resultData['total_price'] ?? '€0.00', 
-                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)
-              ),
-            )
-          ],
+          ),
         ),
-      ),
+        const SizedBox(height: 16),
+        const Text('Ingrediënten:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+        const SizedBox(height: 8),
+        
+        // De lijst met gegenereerde ingrediënten
+        Expanded(
+          child: ListView.builder(
+            itemCount: items.length,
+            itemBuilder: (context, index) {
+              final item = items[index];
+              return Card(
+                elevation: 1,
+                margin: const EdgeInsets.only(bottom: 8),
+                child: ListTile(
+                  leading: const Icon(Icons.shopping_basket, color: Colors.green),
+                  title: Text(item['name'] ?? 'Onbekend', style: const TextStyle(fontWeight: FontWeight.w500)),
+                  subtitle: Text('Winkel: ${item['store']}'),
+                  trailing: Text(item['price'] ?? '', style: const TextStyle(fontWeight: FontWeight.bold)),
+                ),
+              );
+            },
+          ),
+        ),
+      ],
     );
   }
 }
