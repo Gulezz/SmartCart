@@ -33,7 +33,7 @@ class MenuInputScreen extends StatefulWidget {
 class _MenuInputScreenState extends State<MenuInputScreen> {
   final TextEditingController _menuController = TextEditingController();
   bool _isLoading = false; // Houdt bij of we aan het laden zijn
-
+  
   Future<void> _calculateList() async {
     if (_menuController.text.isEmpty) return;
 
