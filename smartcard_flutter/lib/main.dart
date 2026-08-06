@@ -89,7 +89,7 @@ class _VandaagSchermState extends State<VandaagScherm> {
       _isLaden = true;
     });
 
-    final url = Uri.parse('http://192.168.2.55:5000/api/calculate');
+    final url = Uri.parse('https://smartcart-test.onrender.com/api/calculate');
 
     try {
       final response = await http.post(
