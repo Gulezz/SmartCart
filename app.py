@@ -8,7 +8,7 @@ app = Flask(__name__)
 
 # Initialiseer de OpenAI client. 
 # PLAK HIER JOUW API SLEUTEL (Tussen de aanhalingstekens)
-client = groq.Groq(api_key="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")
+client = groq.Groq(api_key=os.environ.get("GROQ_API_KEY"))
 
 @app.route('/api/calculate', methods=['POST'])
 def calculate():
