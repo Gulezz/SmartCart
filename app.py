@@ -2,6 +2,7 @@ from flask import Flask, request, jsonify
 from openai import OpenAI
 import groq
 import json
+import os
 
 app = Flask(__name__)
 
@@ -73,4 +74,7 @@ def calculate():
     return jsonify(response_data)
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    # Cloud-platformen zoals Render bepalen zelf de poort, 
+    # we vertellen Flask hier om te luisteren naar wat Render doorgeeft.
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port)
