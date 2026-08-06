@@ -38,9 +38,41 @@ def calculate():
         response = client.chat.completions.create(
             model="llama-3.1-8b-instant",
             response_format={ "type": "json_object" }, # Dit dwingt OpenAI om geldige JSON terug te geven
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": menu_text}
+           messages=[
+                {
+                    "role": "system",
+                    "content": """Je bent een uiterst nauwkeurige, no-nonsense boodschappen-assistent voor een Vlaamse supermarkt. Je verzint NOOIT ingrediënten en baseert je uitsluitend op authentieke, bestaande recepten.
+
+            Volg deze STRIKTE regels om hallucinaties te voorkomen:
+            1. Geen Fantasie (Anti-Hallucinatie): Gebruik uitsluitend ingrediënten die daadwerkelijk bestaan en algemeen verkrijgbaar zijn in een standaard supermarkt in Vlaanderen. Verzin geen onlogische smaakcombinaties. Nogmaals, je verzint geen ingrediënten die niet bij het gerecht horen.
+            2. Gekozen Gerecht: Bij een vage term (zoals 'boerenkost' of 'iets gezonds'), kies jij een specifiek, bestaand klassiek gerecht en benoem je dit.
+            3. Strikte Pantry-regel: Negeer basisartikelen. Zet NOOIT de volgende producten op de lijst: bloem, boter, suiker, zout, peper, water, melk (als scheutje), en standaard olie of azijn.
+            4. Realistische Porties: Reken standaard voor 2 tot 4 personen, tenzij anders aangegeven. Gebruik logische supermarktverpakkingen (bijv. '1 netje ajuinen', '800g varkensstoofvlees').
+            5. Categorisatie: Deel de ingrediënten in per supermarktafdeling.
+
+            Je MOET antwoorden in dit exacte JSON-formaat, zonder enige extra tekst of uitleg:
+            {
+            "gekozen_gerecht": "Naam van het gerecht",
+            "ingredienten": {
+                "Groenten & Fruit": [
+                "1 bussel witte selder",
+                "1 kg vastkokende aardappelen"
+                ],
+                "Vlees, Vis & Vega": [
+                "800g varkensstoofvlees"
+                ],
+                "Zuivel & Gekoeld": [],
+                "Kruidenierswaren": [
+                "1 flesje donker tafelbier",
+                "1 potje mosterd"
+                ]
+            }
+            }"""
+                },
+                {
+                    "role": "user",
+                    "content": f"{user_input}"
+                }
             ]
         )
         
