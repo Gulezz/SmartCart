@@ -1,27 +1,27 @@
-from google import genai
-from google.genai import types
 import os
+import json
 from flask import Flask, request, jsonify
 from dotenv import load_dotenv
+from google import genai
+from google.genai import types
 
 load_dotenv()
 
 app = Flask(__name__)
 
-# 1. Initialiseer de NIEUWE client
+# 1. De NIEUWE manier van initialiseren via een Client
 client = genai.Client(api_key=os.environ.get("GEMINI_API_KEY"))
 
-# Configureer het Gemini model met onze super-strikte instructies
 systeem_regels = """Je bent een uiterst nauwkeurige, no-nonsense boodschappen-assistent voor een Vlaamse supermarkt. Je verzint NOOIT ingrediënten en baseert je uitsluitend op authentieke, bestaande recepten.
 
 Volg deze STRIKTE regels om hallucinaties te voorkomen:
 1. Geen Fantasie (Anti-Hallucinatie): Gebruik uitsluitend ingrediënten die daadwerkelijk bestaan en algemeen verkrijgbaar zijn in een standaard supermarkt in Vlaanderen.
-2. Gekozen Gerecht: Bij een vage term (zoals 'boerenkost'), kies jij een specifiek, bestaand klassiek gerecht en benoem je dit.
+2. Gekozen Gerecht: Bij een vage term, kies jij een specifiek, bestaand klassiek gerecht en benoem je dit.
 3. Strikte Pantry-regel: Negeer basisartikelen. Zet NOOIT de volgende producten op de lijst: bloem, boter, suiker, zout, peper, water, melk, en standaard olie of azijn.
 4. Realistische Porties: Reken standaard voor 2 tot 4 personen. Gebruik logische supermarktverpakkingen (bijv. '1 netje ajuinen', '800g varkensstoofvlees').
 5. Categorisatie: Deel de ingrediënten in per supermarktafdeling.
 
-Je MOET antwoorden in dit exacte JSON-formaat, zonder enige extra tekst of markdown:
+Je MOET antwoorden in dit exacte JSON-formaat, zonder enige extra tekst of uitleg:
 {
   "gekozen_gerecht": "Naam van het gerecht",
   "ingredienten": {
@@ -32,13 +32,6 @@ Je MOET antwoorden in dit exacte JSON-formaat, zonder enige extra tekst of markd
   }
 }"""
 
-# We laden het model en dwingen het om in JSON te antwoorden
-model = genai.GenerativeModel(
-    model_name="gemini-1.5-flash",
-    system_instruction=systeem_regels,
-    generation_config={"response_mime_type": "application/json"}
-)
-
 @app.route('/api/calculate', methods=['POST'])
 def calculate_groceries():
     data = request.get_json()
@@ -48,7 +41,7 @@ def calculate_groceries():
         return jsonify({'error': 'Geen menu opgegeven'}), 400
 
     try:
-        # 2. Gebruik de NIEUWE manier om content te genereren
+        # 2. De NIEUWE manier om de AI aan te roepen
         response = client.models.generate_content(
             model="gemini-1.5-flash",
             contents=user_input,
@@ -60,9 +53,10 @@ def calculate_groceries():
         
         result_text = response.text
         
-        import json
+        # Zet de tekst om naar een bruikbaar JSON-object
         json_data = json.loads(result_text)
         
+        # Tijdelijke placeholders voor je Flutter interface
         json_data['route_info'] = "Vertrek Bierbeek -> Colruyt -> Thuis"
         json_data['total_price'] = "Wordt later berekend"
         
