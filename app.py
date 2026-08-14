@@ -1,15 +1,15 @@
+from google import genai
+from google.genai import types
 import os
-import google.generativeai as genai
 from flask import Flask, request, jsonify
 from dotenv import load_dotenv
 
-# Laad de geheime sleutels (voor lokaal testen)
 load_dotenv()
 
 app = Flask(__name__)
 
-# Koppel je Gemini API-sleutel
-genai.configure(api_key=os.environ.get("GEMINI_API_KEY"))
+# 1. Initialiseer de NIEUWE client
+client = genai.Client(api_key=os.environ.get("GEMINI_API_KEY"))
 
 # Configureer het Gemini model met onze super-strikte instructies
 systeem_regels = """Je bent een uiterst nauwkeurige, no-nonsense boodschappen-assistent voor een Vlaamse supermarkt. Je verzint NOOIT ingrediënten en baseert je uitsluitend op authentieke, bestaande recepten.
@@ -48,17 +48,21 @@ def calculate_groceries():
         return jsonify({'error': 'Geen menu opgegeven'}), 400
 
     try:
-        # Vraag het antwoord aan Gemini
-        response = model.generate_content(user_input)
+        # 2. Gebruik de NIEUWE manier om content te genereren
+        response = client.models.generate_content(
+            model="gemini-1.5-flash",
+            contents=user_input,
+            config=types.GenerateContentConfig(
+                system_instruction=systeem_regels,
+                response_mime_type="application/json"
+            )
+        )
         
-        # Haal de JSON-tekst uit het antwoord
         result_text = response.text
         
-        # Omdat we JSON hebben geëist, kunnen we dit direct terugsturen naar Flutter
         import json
         json_data = json.loads(result_text)
         
-        # We voegen voor nu de statische route/prijs toe om je Flutter app niet stuk te maken
         json_data['route_info'] = "Vertrek Bierbeek -> Colruyt -> Thuis"
         json_data['total_price'] = "Wordt later berekend"
         
@@ -66,7 +70,7 @@ def calculate_groceries():
 
     except Exception as e:
         print(f"Fout bij Gemini: {e}")
-        return jsonify({'error': 'Er ging iets mis bij het genereren van de lijst'}), 500
+        return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
