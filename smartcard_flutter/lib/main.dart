@@ -87,10 +87,12 @@ class _VandaagSchermState extends State<VandaagScherm> {
   Future<void> fetchBerekening(String ingevoerdMenu) async {
     setState(() {
       _isLaden = true;
+      _apiResultaat = null; // Reset vorige resultaten
     });
 
-    final url = Uri.parse('https://smartcart-test.onrender.com/api/calculate');
-
+    // LET OP: Check of dit jouw EXACTE nieuwe Render URL is!
+    final url = Uri.parse('https://smartcard-gemini.onrender.com/api/calculate');
+    
     try {
       final response = await http.post(
         url,
@@ -104,14 +106,21 @@ class _VandaagSchermState extends State<VandaagScherm> {
           _isLaden = false;
         });
       } else {
-        setState(() {
-          _isLaden = false;
-        });
+        setState(() { _isLaden = false; });
+        // Toon de foutmelding op het scherm
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Server fout: ${response.statusCode}. Check Render!'), backgroundColor: Colors.red),
+          );
+        }
       }
     } catch (e) {
-      setState(() {
-        _isLaden = false;
-      });
+      setState(() { _isLaden = false; });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Netwerkfout: Kan server niet bereiken.'), backgroundColor: Colors.red),
+        );
+      }
     }
   }
 
@@ -119,6 +128,17 @@ class _VandaagSchermState extends State<VandaagScherm> {
   void dispose() {
     _menuController.dispose();
     super.dispose();
+  }
+
+  // Berekent het totaal aantal producten in alle categorieën
+  int _berekenTotaalProducten() {
+    if (_apiResultaat == null || _apiResultaat!['ingredienten'] == null) return 0;
+    int totaal = 0;
+    final ingredientenMap = _apiResultaat!['ingredienten'] as Map<String, dynamic>;
+    for (var lijst in ingredientenMap.values) {
+      if (lijst is List) totaal += lijst.length;
+    }
+    return totaal;
   }
 
   @override
@@ -129,7 +149,6 @@ class _VandaagSchermState extends State<VandaagScherm> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Header met begroeting
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -151,7 +170,6 @@ class _VandaagSchermState extends State<VandaagScherm> {
             ),
             const SizedBox(height: 32),
             
-            // Invoerveld "Wat wil je deze week eten?"
             const Text(
               'Wat wil je deze week eten?',
               style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
@@ -183,7 +201,7 @@ class _VandaagSchermState extends State<VandaagScherm> {
                   suffixIcon: _isLaden 
                       ? const Padding(
                           padding: EdgeInsets.all(12.0),
-                          child: CircularProgressIndicator(strokeWidth: 2),
+                          child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF0F4D2A)),
                         )
                       : IconButton(
                           icon: const Icon(Icons.send, color: Color(0xFF0F4D2A)),
@@ -199,9 +217,13 @@ class _VandaagSchermState extends State<VandaagScherm> {
             ),
             const SizedBox(height: 24),
 
-            // Knoppen sturen data via HTTP verzoek indien ingevuld
             if (_apiResultaat != null) ...[
-              // Groene Overzichtskaarten
+              // We tonen nu ook de naam van het gerecht dat Gemini heeft gekozen!
+              Text(
+                'Gekozen: ${_apiResultaat!['gekozen_gerecht'] ?? 'Menu'}',
+                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF0F4D2A)),
+              ),
+              const SizedBox(height: 12),
               Container(
                 decoration: BoxDecoration(
                   color: const Color(0xFF0F4D2A),
@@ -216,14 +238,13 @@ class _VandaagSchermState extends State<VandaagScherm> {
                     const Divider(color: Colors.white24, height: 32),
                     _bouwStatRow(
                       Icons.storefront_outlined, 
-                      '${(_apiResultaat!['items'] as List?)?.length ?? 0} producten gevonden',
-                      onTap: () => _toonProductenLijst(context, _apiResultaat!['items'] as List?),
+                      '${_berekenTotaalProducten()} producten gevonden',
+                      onTap: () => _toonProductenLijst(context),
                     ),
                   ],
                 ),
               ),
               const SizedBox(height: 16),
-              // Actieknop
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
@@ -232,15 +253,13 @@ class _VandaagSchermState extends State<VandaagScherm> {
                     padding: const EdgeInsets.symmetric(vertical: 16),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                   ),
-                  onPressed: () {
-                    _toonProductenLijst(context, _apiResultaat!['items'] as List?);
-                  },
+                  onPressed: () => _toonProductenLijst(context),
                   child: const Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Padding(
                         padding: EdgeInsets.only(left: 16.0),
-                        child: Text('Bekijk mijn plan', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+                        child: Text('Bekijk boodschappenlijst', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
                       ),
                       Icon(Icons.chevron_right, color: Colors.white),
                     ],
@@ -253,8 +272,6 @@ class _VandaagSchermState extends State<VandaagScherm> {
       ),
     );
   }
-
-  // --- NIEUWE FUNCTIES (binnen de State klasse) ---
 
   Widget _bouwStatRow(IconData icon, String text, {VoidCallback? onTap}) {
     return InkWell(
@@ -279,82 +296,82 @@ class _VandaagSchermState extends State<VandaagScherm> {
     );
   }
 
-  void _toonProductenLijst(BuildContext context, List<dynamic>? items) {
-    if (items == null || items.isEmpty) return;
+  void _toonProductenLijst(BuildContext context) {
+    if (_apiResultaat == null || _apiResultaat!['ingredienten'] == null) return;
+    
+    final ingredientenMap = _apiResultaat!['ingredienten'] as Map<String, dynamic>;
+    final gerechtNaam = _apiResultaat!['gekozen_gerecht'] ?? 'Boodschappenlijst';
+
+    // We bouwen dynamisch een lijst met categorie-koppen en de producten eronder
+    List<Widget> lijstWeergave = [];
+    
+    ingredientenMap.forEach((categorie, producten) {
+      final prodLijst = producten as List<dynamic>;
+      if (prodLijst.isNotEmpty) {
+        // Voeg de categorie titel toe
+        lijstWeergave.add(
+          Padding(
+            padding: const EdgeInsets.only(top: 16.0, bottom: 8.0),
+            child: Text(
+              categorie, 
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF0F4D2A))
+            ),
+          )
+        );
+        // Voeg de producten onder deze categorie toe
+        for (var product in prodLijst) {
+          lijstWeergave.add(
+            Card(
+              elevation: 0,
+              color: Colors.grey.shade50,
+              margin: const EdgeInsets.only(bottom: 6),
+              child: ListTile(
+                leading: const Icon(Icons.check_circle_outline, color: Color(0xFF0F4D2A)),
+                title: Text(product.toString(), style: const TextStyle(fontWeight: FontWeight.w500)),
+              ),
+            )
+          );
+        }
+      }
+    });
 
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.white,
+      isScrollControlled: true, // Zorgt dat de popup groter kan worden als de lijst lang is
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       builder: (BuildContext context) {
-        return Padding(
-          padding: const EdgeInsets.all(20.0),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text('Boodschappenlijst', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
-              const SizedBox(height: 16),
-              Expanded(
-                child: ListView.builder(
-                  itemCount: items.length,
-                  itemBuilder: (context, index) {
-                    final item = items[index];
-                    return Card(
-                      elevation: 0,
-                      color: Colors.grey.shade50,
-                      margin: const EdgeInsets.only(bottom: 8),
-                      child: ListTile(
-                        leading: const Icon(Icons.shopping_basket, color: Color(0xFF0F4D2A)),
-                        title: Text(item['name'] ?? 'Onbekend', style: const TextStyle(fontWeight: FontWeight.w600)),
-                        subtitle: Text('Winkel: ${item['store']}'),
-                        trailing: Text(item['price'] ?? '', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                      ),
-                    );
-                  },
-                ),
+        return DraggableScrollableSheet(
+          expand: false,
+          initialChildSize: 0.6, // Start op 60% van het scherm
+          maxChildSize: 0.9, // Kan uitgeschoven worden tot 90%
+          builder: (_, controller) {
+            return Padding(
+              padding: const EdgeInsets.all(24.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(gerechtNaam, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 16),
+                  Expanded(
+                    child: ListView(
+                      controller: controller,
+                      children: lijstWeergave,
+                    ),
+                  ),
+                ],
               ),
-            ],
-          ),
+            );
+          }
         );
       },
     );
   }
 }
 
-// --- TAB 4: ROUTE SCHERM (Zonder Maps, Grijs scherm) ---
-class RouteScherm extends StatelessWidget {
-  const RouteScherm({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.grey.shade300, // Maakt de achtergrond grijs
-      appBar: AppBar(
-        title: const Text('Jouw Route', style: TextStyle(fontWeight: FontWeight.bold)),
-        centerTitle: true,
-        backgroundColor: Colors.grey.shade200,
-      ),
-      body: const Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.map, size: 64, color: Colors.grey),
-            SizedBox(height: 16),
-            Text(
-              'Kaart is tijdelijk uitgeschakeld.',
-              style: TextStyle(fontSize: 18, color: Colors.black54),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-// --- TIJDELIJKE SCHERMEN VOOR NAVIGATIE ---
+// --- TAB 2 & 3: PLACEHOLDER SCHERMEN ---
 class PlaceholderScherm extends StatelessWidget {
   final String titel;
   const PlaceholderScherm({super.key, required this.titel});
@@ -362,7 +379,25 @@ class PlaceholderScherm extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Center(
-      child: Text(titel, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+      child: Text(
+        titel,
+        style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Color(0xFF0F4D2A)),
+      ),
+    );
+  }
+}
+
+// --- TAB 4: ROUTE SCHERM ---
+class RouteScherm extends StatelessWidget {
+  const RouteScherm({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const Center(
+      child: Text(
+        'Route & Kaart',
+        style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Color(0xFF0F4D2A)),
+      ),
     );
   }
 }
