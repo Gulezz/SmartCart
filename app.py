@@ -43,7 +43,7 @@ def calculate_groceries():
     try:
         # 2. De NIEUWE manier om de AI aan te roepen
         response = client.models.generate_content(
-            model="gemini-1.5-flash",
+            model="gemini-2.5-flash", 
             contents=user_input,
             config=types.GenerateContentConfig(
                 system_instruction=systeem_regels,
