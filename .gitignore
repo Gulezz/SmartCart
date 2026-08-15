@@ -13,3 +13,4 @@ prisma/generated/
 npm-debug.log*
 *.tsbuildinfo
 next-env.d.ts
+test-models
