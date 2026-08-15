@@ -9,7 +9,6 @@ load_dotenv()
 
 app = Flask(__name__)
 
-# 1. De NIEUWE manier van initialiseren via een Client
 client = genai.Client(api_key=os.environ.get("GEMINI_API_KEY"))
 
 systeem_regels = """Je bent een uiterst nauwkeurige, no-nonsense boodschappen-assistent voor een Vlaamse supermarkt. Je verzint NOOIT ingrediënten en baseert je uitsluitend op authentieke, bestaande recepten.
@@ -41,15 +40,17 @@ def calculate_groceries():
         return jsonify({'error': 'Geen menu opgegeven'}), 400
 
     try:
-        # 2. De NIEUWE manier om de AI aan te roepen
-        response = client.models.generate_content(
-            model="gemini-flash", 
-            contents=user_input,
+        # DE NIEUWE METHODE: Gebruik de Interactions/Chats API
+        chat = client.chats.create(
+            model="gemini-flash",
             config=types.GenerateContentConfig(
                 system_instruction=systeem_regels,
                 response_mime_type="application/json"
             )
         )
+        
+        # Stuur het bericht via de opgezette interactie
+        response = chat.send_message(user_input)
         
         result_text = response.text
         
